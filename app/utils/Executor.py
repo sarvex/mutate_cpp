@@ -74,9 +74,9 @@ class Executor:
 
     def workflow(self, patch: Patch):
         assert self.__current_patch is None, 'no auto-concurrency!'
-        
+
         file = File.query.get(patch.file_id)
-        
+
         if file is not None:
             self.__current_patch = patch
 
@@ -88,14 +88,13 @@ class Executor:
             # step 2: apply patch
             self.__execute_command_timeout('patch -p1 --input={patchfile} {inputfile}'.format(patchfile=patchfile.name, inputfile=file.filename), cwd='/')
 
-            # step 3: command pipeline
-            success = self.__apply_command(patch, 'build_command') and \
-                      self.__apply_command(patch, 'quickcheck_command') and \
-                      self.__apply_command(patch, 'test_command')
-
-            if success:
-                 patch.state = 'survived'
-                 db.session.commit()
+            if (
+                success := self.__apply_command(patch, 'build_command')
+                and self.__apply_command(patch, 'quickcheck_command')
+                and self.__apply_command(patch, 'test_command')
+            ):
+                patch.state = 'survived'
+                db.session.commit()
 
             # step 4: revert patch
             self.__execute_command_timeout('patch -p1 --reverse --input={patchfile} {inputfile}'.format(patchfile=patchfile.name, inputfile=file.filename),

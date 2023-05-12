@@ -30,9 +30,7 @@ def basename(text):
 
 @app.template_filter()
 def striptext(text):
-    if type(text) != str:
-        return text
-    return text.strip()
+    return text if type(text) != str else text.strip()
 
 
 @app.template_filter()
@@ -273,24 +271,22 @@ def route_v2_project_project_id_files_file_id_generate(project_id, file_id):
     if file is None:
         abort(404)
 
-    if request.method == 'POST':
-        try:
-            first_line = int(request.form.get('first_line'))
-        except ValueError:
-            first_line = 1
-
-        try:
-            last_line = int(request.form.get('last_line'))
-        except ValueError:
-            last_line = -1
-
-        s = SourceFile(file, first_line, last_line)
-        s.generate_patches()
-        flash('Successfully created patches.', category='message')
-        return redirect(url_for('route_v2_project_project_id', project_id=project.id))
-
-    else:
+    if request.method != 'POST':
         return render_template('v2_generate_patches.html', project=project, file=file)
+    try:
+        first_line = int(request.form.get('first_line'))
+    except ValueError:
+        first_line = 1
+
+    try:
+        last_line = int(request.form.get('last_line'))
+    except ValueError:
+        last_line = -1
+
+    s = SourceFile(file, first_line, last_line)
+    s.generate_patches()
+    flash('Successfully created patches.', category='message')
+    return redirect(url_for('route_v2_project_project_id', project_id=project.id))
 
 
 @app.route('/projects/<int:project_id>/patches/<int:patch_id>/runs/<int:run_id>')

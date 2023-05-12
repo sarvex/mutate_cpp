@@ -10,15 +10,15 @@ class StringLiteralFinder:
     def __init__(self, line):
         self.string_literals = []  # type: List[Tuple[int, int]]
 
-        for match in re.finditer(re.compile("\".*?\""), line):
-            self.string_literals.append(match.span())
+        self.string_literals.extend(
+            match.span() for match in re.finditer(re.compile("\".*?\""), line)
+        )
 
     def is_in_string_literal(self, index):
-        for (string_start, string_end) in self.string_literals:
-            if string_start < index < string_end:
-                return True
-
-        return False
+        return any(
+            string_start < index < string_end
+            for string_start, string_end in self.string_literals
+        )
 
 
 ##############################################################################
@@ -33,16 +33,21 @@ class SimplePattern:
         string_finder = StringLiteralFinder(line)
 
         for replacement_pattern in self.replacement_patterns.keys():
-            for occurrence in [match for match in re.finditer(re.compile(replacement_pattern), line)]:
+            for occurrence in list(re.finditer(re.compile(replacement_pattern), line)):
                 if string_finder.is_in_string_literal(occurrence.start()):
                     continue
 
-                for replacement_str in self.replacement_patterns[replacement_pattern]:
-                    result.append(Replacement(start_col=occurrence.start(),
-                                              end_col=occurrence.end(),
-                                              old_val=line[occurrence.start():occurrence.end()],
-                                              new_val=replacement_str))
-
+                result.extend(
+                    Replacement(
+                        start_col=occurrence.start(),
+                        end_col=occurrence.end(),
+                        old_val=line[occurrence.start() : occurrence.end()],
+                        new_val=replacement_str,
+                    )
+                    for replacement_str in self.replacement_patterns[
+                        replacement_pattern
+                    ]
+                )
         return result
 
     def __repr__(self):
@@ -268,7 +273,7 @@ class DecimalNumberLiteralMutator:
 
         string_finder = StringLiteralFinder(line)
 
-        for occurrence in [match for match in re.finditer(re.compile(self.regex), line)]:
+        for occurrence in list(re.finditer(re.compile(self.regex), line)):
             if string_finder.is_in_string_literal(occurrence.start()):
                 continue
 
@@ -281,12 +286,15 @@ class DecimalNumberLiteralMutator:
                 continue
 
             replacements = list({number_val + 1, number_val - 1, -number_val, 0} - {number_val})
-            for replacement in replacements:
-                result.append(Replacement(start_col=occurrence.start(1),
-                                          end_col=occurrence.end(1),
-                                          old_val=line[occurrence.start(1):occurrence.end(1)],
-                                          new_val=str(replacement)))
-
+            result.extend(
+                Replacement(
+                    start_col=occurrence.start(1),
+                    end_col=occurrence.end(1),
+                    old_val=line[occurrence.start(1) : occurrence.end(1)],
+                    new_val=str(replacement),
+                )
+                for replacement in replacements
+            )
         return result
 
 
@@ -303,7 +311,7 @@ class HexNumberLiteralMutator:
 
         string_finder = StringLiteralFinder(line)
 
-        for occurrence in [match for match in re.finditer(re.compile(self.regex), line)]:
+        for occurrence in list(re.finditer(re.compile(self.regex), line)):
             if string_finder.is_in_string_literal(occurrence.start()):
                 continue
 
@@ -313,12 +321,15 @@ class HexNumberLiteralMutator:
             number_val = int(number_str, 0)
 
             replacements = list({number_val + 1, number_val - 1, -number_val, 0} - {number_val})
-            for replacement in replacements:
-                result.append(Replacement(start_col=occurrence.start(),
-                                          end_col=occurrence.end(),
-                                          old_val=line[occurrence.start():occurrence.end()],
-                                          new_val=hex(replacement)))
-
+            result.extend(
+                Replacement(
+                    start_col=occurrence.start(),
+                    end_col=occurrence.end(),
+                    old_val=line[occurrence.start() : occurrence.end()],
+                    new_val=hex(replacement),
+                )
+                for replacement in replacements
+            )
         return result
 
 

@@ -103,12 +103,17 @@ class SourceFile:
         context_after = self.full_content[
                         index_line_number + 1:min(len(self.full_content), index_line_number + context_lines + 1)]
 
-        patch_lines = []
+        patch_lines = [
+            '--- {filename} {date}'.format(
+                filename=self.filename, date=original_file_date
+            )
+            + os.linesep,
+            '+++ {filename} {date}'.format(
+                filename=self.filename, date=datetime.now()
+            )
+            + os.linesep,
+        ]
 
-        # first line: we want to change the source file
-        patch_lines.append('--- {filename} {date}'.format(filename=self.filename, date=original_file_date) + os.linesep)
-        # second line: the new file has the same name, but is changed now
-        patch_lines.append('+++ {filename} {date}'.format(filename=self.filename, date=datetime.now()) + os.linesep)
         # third line: summarize the changes regarding to displayed lines
         patch_lines.append('@@ -{lineno},{context_length} +{lineno},{context_length_shortened} @@'.format(
             lineno=line_number - len(context_before),
@@ -117,14 +122,13 @@ class SourceFile:
         ) + os.linesep)
 
         # lines: context before
-        patch_lines += [' ' + x + os.linesep for x in context_before]
+        patch_lines += [f' {x}{os.linesep}' for x in context_before]
         # line: the old value
-        patch_lines.append('-' + old_line + os.linesep)
+        patch_lines.append(f'-{old_line}{os.linesep}')
         # line: the new value
         if replacement.new_val is not None:
-            patch_lines.append('+' + new_line + os.linesep)
+            patch_lines.append(f'+{new_line}{os.linesep}')
         # lines: context after
-        patch_lines += [' ' + x + os.linesep for x in context_after]
+        patch_lines += [f' {x}{os.linesep}' for x in context_after]
 
-        patch_text = ''.join(patch_lines)
-        return patch_text
+        return ''.join(patch_lines)
